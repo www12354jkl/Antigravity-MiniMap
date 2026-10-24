@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <rect x="14" y="14" width="100" height="100" rx="24" fill="#181B24" stroke="#6E8EFB" stroke-width="4"/>
+  <!-- Left chat bubbles representation -->
+  <rect x="28" y="32" width="44" height="10" rx="5" fill="#4A5568"/>
+  <rect x="28" y="50" width="56" height="10" rx="5" fill="#6E8EFB"/>
+  <rect x="28" y="68" width="38" height="10" rx="5" fill="#4A5568"/>
+  <rect x="28" y="86" width="50" height="10" rx="5" fill="#4A5568"/>
+  <!-- Right minimap rail & active indicator -->
+  <line x1="96" y1="28" x2="96" y2="100" stroke="#2D3748" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="96" cy="37" r="4" fill="#718096"/>
+  <circle cx="96" cy="55" r="6" fill="#6E8EFB" stroke="#E2E8F0" stroke-width="2"/>
+  <circle cx="96" cy="73" r="4" fill="#718096"/>
+  <circle cx="96" cy="91" r="4" fill="#718096"/>
+</svg>

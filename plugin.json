@@ -1,0 +1,12 @@
+{
+  "name": "antigravity-minimap",
+  "displayName": "Antigravity MiniMap",
+  "version": "0.1.0",
+  "description": "对话小地图：在对话区右侧展示历史提问刻度条，悬停展开带序号与时间戳的提问目录，点击一键精准定位历史上下文（支持跨分页加载与右侧常驻面板）。",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "定位到本场对话的第一条提问",
+    "查看当前对话的历史提问目录",
+    "快速跳转到之前的某个问题上下文"
+  ]
+}
