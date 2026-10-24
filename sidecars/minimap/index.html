@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>对话小地图</title>
+  <style>
+    :root {
+      --bg: #141720;
+      --card: #1c202c;
+      --border: rgba(255, 255, 255, 0.09);
+      --fg: #e6ecf5;
+      --muted: #8b95a7;
+      --accent: #7a9aff;
+      --accent-soft: rgba(122, 154, 255, 0.15);
+      --hover: rgba(255, 255, 255, 0.05);
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --border: rgba(15, 23, 42, 0.10);
+        --fg: #1e293b;
+        --muted: #64748b;
+        --accent: #4f6ef7;
+        --accent-soft: rgba(79, 110, 247, 0.12);
+        --hover: rgba(15, 23, 42, 0.04);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 12px;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 13px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .title {
+      font-weight: 600;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge {
+      font-size: 11px;
+      padding: 1px 7px;
+      border-radius: 99px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .item {
+      cursor: pointer;
+      padding: 9px 11px;
+      border-radius: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      transition: all 0.14s ease;
+    }
+    .item:hover {
+      border-color: var(--accent);
+      background: var(--hover);
+    }
+    .item[data-active="true"] {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+    }
+    .meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      font-size: 11px;
+    }
+    .num {
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .time {
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .prompt {
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--fg);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      word-break: break-word;
+    }
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 32px 12px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">
+      <span>对话小地图</span>
+      <span class="badge" id="count-badge">0 轮</span>
+    </div>
+  </div>
+  <div class="list" id="turn-list">
+    <div class="empty">正在连接当前对话...</div>
+  </div>
+  <script>
+    const listEl = document.getElementById('turn-list');
+    const badgeEl = document.getElementById('count-badge');
+    const urlCid = new URLSearchParams(location.search).get('conversationId');
+
+    function formatTime(ms) {
+      if (!ms || !Number.isFinite(Number(ms))) return '';
+      const d = new Date(Number(ms));
+      const pad = n => String(n).padStart(2, '0');
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    async function callApi(path, method = 'GET', body = {}) {
+      if (window.sidecar?.fetch) {
+        const res = await window.sidecar.fetch(path, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: method === 'POST' ? JSON.stringify(body) : undefined,
+        });
+        return res.json();
+      }
+      const res = await fetch(path, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: method === 'POST' ? JSON.stringify(body) : undefined,
+      });
+      return res.json();
+    }
+
+    let lastStructureSig = '';
+    let lastActiveStep = null;
+
+    async function refresh() {
+      try {
+        const state = await callApi('/api/state', 'POST', { conversationId: urlCid });
+        const turns = state?.turns || [];
+        badgeEl.textContent = `共 ${turns.length} 轮`;
+        if (!turns.length) {
+          lastStructureSig = '';
+          listEl.innerHTML = '<div class="empty">当前对话暂无历史提问</div>';
+          return;
+        }
+        const sig = JSON.stringify({
+          cid: state.conversationId,
+          turns: turns.map(t => [t.startStepIndex, t.prompt, t.timestampMs]),
+        });
+        if (sig !== lastStructureSig) {
+          lastStructureSig = sig;
+          listEl.replaceChildren();
+          for (const t of turns) {
+            const isActive = t.startStepIndex === state.activeStepIndex;
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.dataset.stepIndex = String(t.startStepIndex);
+            div.setAttribute('data-active', String(isActive));
+            div.innerHTML = `
+              <div class="meta">
+                <span class="num">#${t.turnIndex}</span>
+                <span class="time">${formatTime(t.timestampMs)}</span>
+              </div>
+              <div class="prompt"></div>
+            `;
+            div.querySelector('.prompt').textContent = t.prompt;
+            div.addEventListener('click', () => {
+              void callApi('/api/jump', 'POST', {
+                stepIndex: t.startStepIndex,
+                conversationId: state.conversationId,
+              });
+            });
+            listEl.appendChild(div);
+          }
+        } else {
+          for (const item of listEl.querySelectorAll('.item')) {
+            const isActive = Number(item.dataset.stepIndex) === state.activeStepIndex;
+            item.setAttribute('data-active', String(isActive));
+          }
+        }
+        if (state.activeStepIndex !== lastActiveStep) {
+          lastActiveStep = state.activeStepIndex;
+          const activeEl = listEl.querySelector('.item[data-active="true"]');
+          if (activeEl) {
+            activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }
+        }
+      } catch {}
+    }
+
+    void refresh();
+    setInterval(refresh, 600);
+  </script>
+</body>
+</html>
